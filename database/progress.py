@@ -1,3 +1,8 @@
+from datetime import date, datetime, timedelta
+
+from database.db import get_connection
+
+
 def initialize_statistics(user_id: int):
     """
     Create a statistics record for a user if one doesn't already exist.
@@ -192,6 +197,8 @@ def record_study_session(
     if duration > 0:
         add_study_time(user_id, duration)
 
+    update_daily_streak(user_id)
+
 
 def add_study_time(user_id: int, seconds: int):
     """
@@ -233,7 +240,7 @@ def get_total_study_time(user_id: int) -> int:
     Return total study time in seconds.
     """
 
-    stats = get_statistics(user_id)
+    stats = get_or_create_statistics(user_id)
 
     if stats is None:
         return 0
@@ -246,9 +253,95 @@ def get_total_sessions(user_id: int) -> int:
     Return total study sessions.
     """
 
-    stats = get_statistics(user_id)
+    stats = get_or_create_statistics(user_id)
 
     if stats is None:
         return 0
 
     return stats["study_sessions"]
+
+
+def get_current_streak(user_id: int) -> int:
+    """
+    Return the user's current study streak.
+    """
+
+    stats = get_or_create_statistics(user_id)
+
+    if stats is None:
+        return 0
+
+    return stats["current_streak"]
+
+
+def get_longest_streak(user_id: int) -> int:
+    """
+    Return the user's longest study streak.
+    """
+
+    stats = get_or_create_statistics(user_id)
+
+    if stats is None:
+        return 0
+
+    return stats["longest_streak"]
+
+
+def update_daily_streak(user_id: int):
+    """
+    Update the user's daily study streak.
+    """
+
+    stats = get_or_create_statistics(user_id)
+
+    today = date.today()
+
+    last_date = stats["last_study_date"]
+
+    if last_date:
+        last_date = datetime.strptime(
+            last_date,
+            "%Y-%m-%d",
+        ).date()
+
+        difference = (today - last_date).days
+
+        if difference == 0:
+            return
+
+        if difference == 1:
+            streak = stats["current_streak"] + 1
+        else:
+            streak = 1
+
+    else:
+        streak = 1
+
+    longest = max(
+        streak,
+        stats["longest_streak"],
+    )
+
+    conn = get_connection()
+
+    conn.execute(
+        """
+        UPDATE user_statistics
+        SET
+            current_streak = ?,
+            longest_streak = ?,
+            last_study_date = ?,
+            updated_at = datetime('now')
+        WHERE user_id = ?
+        """,
+        (
+            streak,
+            longest,
+            today.isoformat(),
+            user_id,
+        ),
+    )
+
+    conn.commit()
+    conn.close()
+
