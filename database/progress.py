@@ -38,6 +38,20 @@ def get_statistics(user_id: int):
     return row
 
 
+def get_or_create_statistics(user_id: int):
+    """
+    Return statistics, creating them if they don't exist.
+    """
+
+    stats = get_statistics(user_id)
+
+    if stats is None:
+        initialize_statistics(user_id)
+        stats = get_statistics(user_id)
+
+    return stats
+
+
 def _update_stat(user_id: int, field: str, value):
     """
     Internal helper for updating a single statistics field.
@@ -107,11 +121,7 @@ def add_xp(user_id: int, amount: int):
     if amount <= 0:
         return
 
-    stats = get_statistics(user_id)
-
-    if stats is None:
-        initialize_statistics(user_id)
-        stats = get_statistics(user_id)
+    stats = get_or_create_statistics(user_id)
 
     new_xp = stats["xp"] + amount
     total_xp = stats["total_xp"] + amount
@@ -141,3 +151,104 @@ def add_xp(user_id: int, amount: int):
     conn.commit()
     conn.close()
   
+
+
+def record_study_session(
+    user_id: int,
+    subject: str,
+    activity: str,
+    duration: int = 0,
+):
+    """
+    Record a study session.
+    Duration is stored in seconds.
+    """
+
+    conn = get_connection()
+
+    conn.execute(
+        """
+        INSERT INTO study_sessions (
+            user_id,
+            subject,
+            activity,
+            duration
+        )
+        VALUES (?, ?, ?, ?)
+        """,
+        (
+            user_id,
+            subject,
+            activity,
+            duration,
+        ),
+    )
+
+    conn.commit()
+    conn.close()
+
+    increment_study_sessions(user_id)
+
+    if duration > 0:
+        add_study_time(user_id, duration)
+
+
+def add_study_time(user_id: int, seconds: int):
+    """
+    Add study time to a user's statistics.
+    """
+
+    if seconds <= 0:
+        return
+
+    stats = get_or_create_statistics(user_id)
+
+    total = stats["total_study_time"] + seconds
+
+    _update_stat(
+        user_id,
+        "total_study_time",
+        total,
+    )
+
+
+def increment_study_sessions(user_id: int):
+    """
+    Increase the study session count.
+    """
+
+    stats = get_or_create_statistics(user_id)
+
+    sessions = stats["study_sessions"] + 1
+
+    _update_stat(
+        user_id,
+        "study_sessions",
+        sessions,
+    )
+
+
+def get_total_study_time(user_id: int) -> int:
+    """
+    Return total study time in seconds.
+    """
+
+    stats = get_statistics(user_id)
+
+    if stats is None:
+        return 0
+
+    return stats["total_study_time"]
+
+
+def get_total_sessions(user_id: int) -> int:
+    """
+    Return total study sessions.
+    """
+
+    stats = get_statistics(user_id)
+
+    if stats is None:
+        return 0
+
+    return stats["study_sessions"]
