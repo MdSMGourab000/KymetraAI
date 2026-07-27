@@ -174,24 +174,36 @@ def init_db():
 
 
     CREATE TABLE IF NOT EXISTS user_statistics (
+    user_id INTEGER PRIMARY KEY,
 
-        user_id INTEGER PRIMARY KEY,
+    xp INTEGER DEFAULT 0,
+    total_xp INTEGER DEFAULT 0,
+    level INTEGER DEFAULT 1,
 
-        xp INTEGER DEFAULT 0,
+    current_streak INTEGER DEFAULT 0,
+    longest_streak INTEGER DEFAULT 0,
 
-        level INTEGER DEFAULT 1,
+    questions_asked INTEGER DEFAULT 0,
+    quizzes_completed INTEGER DEFAULT 0,
+    flashcards_completed INTEGER DEFAULT 0,
+    study_sessions INTEGER DEFAULT 0,
 
-        streak INTEGER DEFAULT 0,
+    correct_answers INTEGER DEFAULT 0,
+    wrong_answers INTEGER DEFAULT 0,
 
-        quizzes_completed INTEGER DEFAULT 0,
+    total_study_time INTEGER DEFAULT 0,
 
-        questions_asked INTEGER DEFAULT 0,
+    average_quiz_score REAL DEFAULT 0,
 
-        flashcards_completed INTEGER DEFAULT 0,
+    last_study_date TEXT,
 
-        FOREIGN KEY(user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
 
-    );
+    FOREIGN KEY(user_id)
+        REFERENCES users(user_id)
+        ON DELETE CASCADE
+);
 
 
 
