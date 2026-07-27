@@ -100,13 +100,11 @@ def _update_stat(user_id: int, field: str, value):
 
 
 def get_xp(user_id: int) -> int:
-    row = get_or_create_statistics(user_id)
-    return row["xp"] if row else 0
+    return get_or_create_statistics(user_id)["xp"]
 
 
 def get_level(user_id: int) -> int:
-    row = get_or_create_statistics(user_id)
-    return row["level"] if row else 1
+    return get_or_create_statistics(user_id)["level"]
 
 
 def calculate_level(xp: int) -> int:
@@ -240,12 +238,7 @@ def get_total_study_time(user_id: int) -> int:
     Return total study time in seconds.
     """
 
-    stats = get_or_create_statistics(user_id)
-
-    if stats is None:
-        return 0
-
-    return stats["total_study_time"]
+    return get_or_create_statistics(user_id)["total_study_time"]
 
 
 def get_total_sessions(user_id: int) -> int:
@@ -371,8 +364,8 @@ def record_quiz_result(
     Record a completed quiz and update statistics.
     """
 
-    if correct < 0 or correct > total:
-    return
+    if total <= 0 or correct < 0 or correct > total:
+        return
 
     stats = get_or_create_statistics(user_id)
 
