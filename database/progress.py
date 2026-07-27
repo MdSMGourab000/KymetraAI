@@ -242,42 +242,15 @@ def get_total_study_time(user_id: int) -> int:
 
 
 def get_total_sessions(user_id: int) -> int:
-    """
-    Return total study sessions.
-    """
-
-    stats = get_or_create_statistics(user_id)
-
-    if stats is None:
-        return 0
-
-    return stats["study_sessions"]
+    return get_or_create_statistics(user_id)["study_sessions"]
 
 
 def get_current_streak(user_id: int) -> int:
-    """
-    Return the user's current study streak.
-    """
-
-    stats = get_or_create_statistics(user_id)
-
-    if stats is None:
-        return 0
-
-    return stats["current_streak"]
+    return get_or_create_statistics(user_id)["current_streak"]
 
 
 def get_longest_streak(user_id: int) -> int:
-    """
-    Return the user's longest study streak.
-    """
-
-    stats = get_or_create_statistics(user_id)
-
-    if stats is None:
-        return 0
-
-    return stats["longest_streak"]
+    return get_or_create_statistics(user_id)["longest_streak"]
 
 
 def update_daily_streak(user_id: int):
