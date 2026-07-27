@@ -1,6 +1,38 @@
 from database.db import get_connection
 
 
+def _update_user_field(user_id: int, field: str, value):
+    """
+    Internal helper to update a single field in the users table.
+    """
+
+    allowed_fields = {
+        "username",
+        "first_name",
+        "last_name",
+        "language",
+        "timezone",
+        "country",
+        "is_admin",
+        "is_banned",
+        "is_premium",
+        "last_active",
+    }
+
+    if field not in allowed_fields:
+        raise ValueError(f"Invalid field: {field}")
+
+    conn = get_connection()
+
+    conn.execute(
+        f"UPDATE users SET {field} = ? WHERE user_id = ?",
+        (value, user_id),
+    )
+
+    conn.commit()
+    conn.close()
+
+
 def user_exists(user_id: int) -> bool:
     """Check if a user exists."""
 
@@ -143,32 +175,15 @@ def delete_user(user_id: int):
     conn.commit()
     conn.close()
 
+
 def ban_user(user_id: int):
     """Ban a user."""
-
-    conn = get_connection()
-
-    conn.execute(
-        "UPDATE users SET is_banned = 1 WHERE user_id = ?",
-        (user_id,),
-    )
-
-    conn.commit()
-    conn.close()
+    _update_user_field(user_id, "is_banned", 1)
 
 
 def unban_user(user_id: int):
     """Unban a user."""
-
-    conn = get_connection()
-
-    conn.execute(
-        "UPDATE users SET is_banned = 0 WHERE user_id = ?",
-        (user_id,),
-    )
-
-    conn.commit()
-    conn.close()
+    _update_user_field(user_id, "is_banned", 0)
 
 
 def is_banned(user_id: int) -> bool:
@@ -188,16 +203,7 @@ def is_banned(user_id: int) -> bool:
 
 def set_admin(user_id: int, value: bool):
     """Grant or revoke admin permissions."""
-
-    conn = get_connection()
-
-    conn.execute(
-        "UPDATE users SET is_admin = ? WHERE user_id = ?",
-        (1 if value else 0, user_id),
-    )
-
-    conn.commit()
-    conn.close()
+    _update_user_field(user_id, "is_admin", 1 if value else 0)
 
 
 def is_admin(user_id: int) -> bool:
@@ -217,16 +223,7 @@ def is_admin(user_id: int) -> bool:
 
 def set_premium(user_id: int, value: bool):
     """Enable or disable premium."""
-
-    conn = get_connection()
-
-    conn.execute(
-        "UPDATE users SET is_premium = ? WHERE user_id = ?",
-        (1 if value else 0, user_id),
-    )
-
-    conn.commit()
-    conn.close()
+    _update_user_field(user_id, "is_premium", 1 if value else 0)
 
 
 def is_premium(user_id: int) -> bool:
@@ -261,16 +258,7 @@ def get_language(user_id: int) -> str:
 
 def set_language(user_id: int, language: str):
     """Update the user's language."""
-
-    conn = get_connection()
-
-    conn.execute(
-        "UPDATE users SET language = ? WHERE user_id = ?",
-        (language, user_id),
-    )
-
-    conn.commit()
-    conn.close()
+    _update_user_field(user_id, "language", language)
 
 
 def get_timezone(user_id: int) -> str:
@@ -290,13 +278,4 @@ def get_timezone(user_id: int) -> str:
 
 def set_timezone(user_id: int, timezone: str):
     """Update the user's timezone."""
-
-    conn = get_connection()
-
-    conn.execute(
-        "UPDATE users SET timezone = ? WHERE user_id = ?",
-        (timezone, user_id),
-    )
-
-    conn.commit()
-    conn.close()
+    _update_user_field(user_id, "timezone", timezone)
