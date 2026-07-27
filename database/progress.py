@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 
 from database.db import get_connection
 
@@ -100,12 +100,12 @@ def _update_stat(user_id: int, field: str, value):
 
 
 def get_xp(user_id: int) -> int:
-    row = get_statistics(user_id)
+    row = get_or_create_statistics(user_id)
     return row["xp"] if row else 0
 
 
 def get_level(user_id: int) -> int:
-    row = get_statistics(user_id)
+    row = get_or_create_statistics(user_id)
     return row["level"] if row else 1
 
 
@@ -345,3 +345,118 @@ def update_daily_streak(user_id: int):
     conn.commit()
     conn.close()
 
+
+def increment_quizzes_completed(user_id: int):
+    """
+    Increase the completed quiz count.
+    """
+
+    stats = get_or_create_statistics(user_id)
+
+    quizzes = stats["quizzes_completed"] + 1
+
+    _update_stat(
+        user_id,
+        "quizzes_completed",
+        quizzes,
+    )
+
+
+def record_quiz_result(
+    user_id: int,
+    correct: int,
+    total: int,
+):
+    """
+    Record a completed quiz and update statistics.
+    """
+
+    if correct < 0 or correct > total:
+    return
+
+    stats = get_or_create_statistics(user_id)
+
+    increment_quizzes_completed(user_id)
+
+    correct_answers = stats["correct_answers"] + correct
+    wrong_answers = stats["wrong_answers"] + (total - correct)
+
+    _update_stat(
+        user_id,
+        "correct_answers",
+        correct_answers,
+    )
+
+    _update_stat(
+        user_id,
+        "wrong_answers",
+        wrong_answers,
+    )
+
+    update_average_quiz_score(user_id)
+
+    add_xp(user_id, correct * 10)
+
+
+def get_accuracy(user_id: int) -> float:
+    """
+    Return quiz accuracy percentage.
+    """
+
+    stats = get_or_create_statistics(user_id)
+
+    correct = stats["correct_answers"]
+    wrong = stats["wrong_answers"]
+
+    total = correct + wrong
+
+    if total == 0:
+        return 0.0
+
+    return round((correct / total) * 100, 2)
+
+
+def update_average_quiz_score(user_id: int):
+    """
+    Update the user's average quiz accuracy.
+    """
+
+    accuracy = get_accuracy(user_id)
+
+    _update_stat(
+        user_id,
+        "average_quiz_score",
+        accuracy,
+    )
+
+
+def increment_questions_asked(user_id: int):
+    """
+    Increase the number of questions asked.
+    """
+
+    stats = get_or_create_statistics(user_id)
+
+    total = stats["questions_asked"] + 1
+
+    _update_stat(
+        user_id,
+        "questions_asked",
+        total,
+    )
+
+
+def increment_flashcards_completed(user_id: int):
+    """
+    Increase the completed flashcards count.
+    """
+
+    stats = get_or_create_statistics(user_id)
+
+    total = stats["flashcards_completed"] + 1
+
+    _update_stat(
+        user_id,
+        "flashcards_completed",
+        total,
+    )
