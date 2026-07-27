@@ -1,50 +1,118 @@
-"""Start and help handlers."""
+"""
+Start and Help command handlers for KymetraAI.
+
+Handles:
+- /start
+- /help
+"""
+
 from telegram import Update
 from telegram.ext import ContextTypes
+
 from database.db import upsert_user
 from utils.helpers import MAIN_MENU_KEYBOARD
 
 
-WELCOME_TEXT = """👋 *Welcome to KymetraAI!*
+WELCOME_NEW_USER = """
+👋 *Welcome to KymetraAI!*
 
-I'm your AI-powered study assistant. I can help you with:
+Your AI-powered personal study assistant.
 
-📚 *Subjects:* Higher Math • Physics • Chemistry • Biology • Math • English • Language Learning • Coding
+📚 *Subjects Available:*
+• Higher Math
+• Physics
+• Chemistry
+• Biology
+• Mathematics
+• English
+• Language Learning
+• Coding
 
-🛠 *What I can do:*
-• ❓ Answer any question
-• 📖 Explain concepts simply
-• 🧠 Generate quizzes
-• 🃏 Flashcard study sessions
-• 📊 Track your learning progress
-• 🌐 Respond in your language
+🧠 *What I can help you with:*
+• Solve questions step-by-step
+• Explain difficult topics
+• Generate practice tests
+• Prepare for exams
+• Improve your learning skills
 
-Choose an option below or just *send me any question* to get started!"""
+🚀 Let's start your learning journey!
 
-HELP_TEXT = """📋 *KymetraAI Commands*
-
-/start — Show this welcome menu
-/ask — Ask any question (or just type it!)
-/explain — Explain a concept simply
-/quiz — Start a quiz on any topic
-/flashcards — Study with flashcards
-/progress — View your learning stats
-/language — Set your preferred language
-/stop — Stop current quiz or flashcard session
-/help — Show this message
-
-💡 *Tip:* You can also just type any question directly — no command needed!"""
+Choose an option below 👇
+"""
 
 
-async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+WELCOME_RETURNING_USER = """
+👋 *Welcome back, {name}!*
+
+Ready to continue learning?
+
+Your AI tutor is waiting for your questions.
+
+Choose an option below 👇
+"""
+
+
+HELP_TEXT = """
+❓ *KymetraAI Help*
+
+Commands:
+
+/start - Start the bot
+/help - Show help menu
+
+📚 You can:
+• Ask academic questions
+• Solve problems
+• Generate quizzes
+• Learn new topics
+
+Need assistance?
+Contact our support team.
+"""
+
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Handles /start command.
+    Registers users and displays welcome message.
+    """
+
     user = update.effective_user
-    upsert_user(user.id, user.username, user.first_name)
+
+    if not user:
+        return
+
+    # Save user information
+    is_new_user = await upsert_user(
+        telegram_id=user.id,
+        username=user.username,
+        first_name=user.first_name,
+        last_name=user.last_name,
+    )
+
+    # Select welcome message
+    if is_new_user:
+        message = WELCOME_NEW_USER
+    else:
+        name = user.first_name or "Student"
+        message = WELCOME_RETURNING_USER.format(name=name)
+
     await update.message.reply_text(
-        WELCOME_TEXT,
-        parse_mode="Markdown",
+        message,
         reply_markup=MAIN_MENU_KEYBOARD,
+        parse_mode="Markdown"
     )
 
 
-async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(HELP_TEXT, parse_mode="Markdown")
+async def help_command(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
+    """
+    Handles /help command.
+    """
+
+    await update.message.reply_text(
+        HELP_TEXT,
+        parse_mode="Markdown"
+    )
