@@ -9,7 +9,10 @@ Handles:
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from database.db import upsert_user
+from database.db import (
+    upsert_user,
+    initialize_statistics,
+)
 from utils.helpers import MAIN_MENU_KEYBOARD
 
 
