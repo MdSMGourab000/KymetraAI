@@ -1,7 +1,15 @@
 """Question & Answer handler — works as free text or via /ask command."""
 from telegram import Update
 from telegram.ext import ContextTypes
-from database.db import upsert_user, get_user_language, record_activity
+from database.db import (
+    upsert_user,
+    get_user_language,
+    record_activity,
+    initialize_statistics,
+    record_question,
+    update_streak,
+    add_xp,
+)
 from services.gemini_service import answer_question, detect_subject
 from utils.helpers import MAIN_MENU_KEYBOARD
 
@@ -9,6 +17,7 @@ from utils.helpers import MAIN_MENU_KEYBOARD
 async def ask_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     upsert_user(user.id, user.username, user.first_name)
+    initialize_statistics(user.id)
 
     question = " ".join(context.args) if context.args else None
     if not question:
@@ -25,6 +34,7 @@ async def handle_free_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handles plain messages not matched by any other handler."""
     user = update.effective_user
     upsert_user(user.id, user.username, user.first_name)
+    initialize_statistics(user.id)
 
     text = update.message.text.strip()
     if not text:
@@ -40,7 +50,12 @@ async def _answer(update: Update, user_id: int, question: str):
         lang = get_user_language(user_id)
         answer = answer_question(question, lang)
         subject = detect_subject(question)
+
         record_activity(user_id, subject, "qa")
+
+        record_question(user_id)
+        update_streak(user_id)
+        add_xp(user_id, 5)
 
         await thinking_msg.edit_text(
             f"*Your question:* {question}\n\n{answer}",
