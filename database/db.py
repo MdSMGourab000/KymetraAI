@@ -16,6 +16,392 @@ def get_connection():
     return conn
 
 
+from datetime import datetime
+
+def initialize_statistics(user_id: int):
+    """
+    Create a statistics record for a user if one doesn't already exist.
+    """
+
+    conn = get_connection()
+
+    conn.execute(
+        """
+        INSERT OR IGNORE INTO user_statistics (user_id)
+        VALUES (?)
+        """,
+        (user_id,),
+    )
+
+    conn.commit()
+    conn.close()
+
+
+def add_xp(user_id: int, xp: int):
+    """
+    Add XP to a user and automatically update their level.
+    """
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    # Get current total XP
+    cursor.execute(
+        """
+        SELECT total_xp
+        FROM user_statistics
+        WHERE user_id = ?
+        """,
+        (user_id,),
+    )
+
+    row = cursor.fetchone()
+
+    if row is None:
+        conn.close()
+        return
+
+    new_total_xp = row["total_xp"] + xp
+    new_level = (new_total_xp // 100) + 1
+
+    cursor.execute(
+        """
+        UPDATE user_statistics
+        SET
+            xp = xp + ?,
+            total_xp = ?,
+            level = ?,
+            updated_at = datetime('now')
+        WHERE user_id = ?
+        """,
+        (
+            xp,
+            new_total_xp,
+            new_level,
+            user_id,
+        ),
+    )
+
+    conn.commit()
+    conn.close()
+
+
+from datetime import datetime, timedelta
+
+
+def update_streak(user_id: int):
+    """
+    Update the user's daily study streak.
+    """
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT current_streak,
+               longest_streak,
+               last_study_date
+        FROM user_statistics
+        WHERE user_id = ?
+        """,
+        (user_id,),
+    )
+
+    row = cursor.fetchone()
+
+    if row is None:
+        conn.close()
+        return
+
+    today = datetime.utcnow().date()
+
+    if row["last_study_date"]:
+        last_date = datetime.fromisoformat(row["last_study_date"]).date()
+    else:
+        last_date = None
+
+    current_streak = row["current_streak"]
+    longest_streak = row["longest_streak"]
+
+    if last_date == today:
+        # Already studied today
+        conn.close()
+        return
+
+    elif last_date == today - timedelta(days=1):
+        # Consecutive day
+        current_streak += 1
+
+    else:
+        # First day or streak broken
+        current_streak = 1
+
+    longest_streak = max(longest_streak, current_streak)
+
+    cursor.execute(
+        """
+        UPDATE user_statistics
+        SET
+            current_streak = ?,
+            longest_streak = ?,
+            last_study_date = ?,
+            updated_at = datetime('now')
+        WHERE user_id = ?
+        """,
+        (
+            current_streak,
+            longest_streak,
+            today.isoformat(),
+            user_id,
+        ),
+    )
+
+    conn.commit()
+    conn.close()
+
+
+def record_question(user_id: int):
+    """
+    Record that the user asked one study question.
+    """
+
+    conn = get_connection()
+
+    conn.execute(
+        """
+        UPDATE user_statistics
+        SET
+            questions_asked = questions_asked + 1,
+            updated_at = datetime('now')
+        WHERE user_id = ?
+        """,
+        (user_id,),
+    )
+
+    conn.commit()
+    conn.close()
+
+
+def record_quiz_result(user_id: int, score: float, correct: bool):
+    """
+    Record a completed quiz answer and update the average score.
+    """
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT quizzes_completed,
+               average_quiz_score
+        FROM user_statistics
+        WHERE user_id = ?
+        """,
+        (user_id,),
+    )
+
+    row = cursor.fetchone()
+
+    if row is None:
+        conn.close()
+        return
+
+    quizzes_completed = row["quizzes_completed"] + 1
+
+    previous_average = row["average_quiz_score"]
+
+    new_average = (
+        (previous_average * row["quizzes_completed"]) + score
+    ) / quizzes_completed
+
+    cursor.execute(
+        """
+        UPDATE user_statistics
+        SET
+            quizzes_completed = ?,
+            average_quiz_score = ?,
+            correct_answers = correct_answers + ?,
+            wrong_answers = wrong_answers + ?,
+            updated_at = datetime('now')
+        WHERE user_id = ?
+        """,
+        (
+            quizzes_completed,
+            new_average,
+            1 if correct else 0,
+            0 if correct else 1,
+            user_id,
+        ),
+    )
+
+    conn.commit()
+    conn.close()
+
+
+def record_flashcard_completion(user_id: int):
+    """
+    Record one completed flashcard.
+    """
+
+    conn = get_connection()
+
+    conn.execute(
+        """
+        UPDATE user_statistics
+        SET
+            flashcards_completed = flashcards_completed + 1,
+            updated_at = datetime('now')
+        WHERE user_id = ?
+        """,
+        (user_id,),
+    )
+
+    conn.commit()
+    conn.close()
+
+
+def record_study_session(user_id: int):
+    """
+    Record one completed study session.
+    """
+
+    conn = get_connection()
+
+    conn.execute(
+        """
+        UPDATE user_statistics
+        SET
+            study_sessions = study_sessions + 1,
+            updated_at = datetime('now')
+        WHERE user_id = ?
+        """,
+        (user_id,),
+    )
+
+    conn.commit()
+    conn.close()
+
+
+def update_study_time(user_id: int, minutes: int):
+    """
+    Add study time (in minutes) to the user's total.
+    """
+
+    conn = get_connection()
+
+    conn.execute(
+        """
+        UPDATE user_statistics
+        SET
+            total_study_time = total_study_time + ?,
+            updated_at = datetime('now')
+        WHERE user_id = ?
+        """,
+        (minutes, user_id),
+    )
+
+    conn.commit()
+    conn.close()
+
+
+def get_user_statistics(user_id: int):
+    """
+    Return all statistics for a user.
+    """
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT *
+        FROM user_statistics
+        WHERE user_id = ?
+        """,
+        (user_id,),
+    )
+
+    row = cursor.fetchone()
+
+    conn.close()
+
+    return row
+
+
+def get_user_progress(user_id: int):
+    """
+    Return the user's learning progress.
+    """
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT
+            level,
+            xp,
+            total_xp,
+            current_streak,
+            longest_streak,
+            questions_asked,
+            quizzes_completed,
+            flashcards_completed,
+            study_sessions,
+            correct_answers,
+            wrong_answers,
+            total_study_time,
+            average_quiz_score
+        FROM user_statistics
+        WHERE user_id = ?
+        """,
+        (user_id,),
+    )
+
+    row = cursor.fetchone()
+
+    conn.close()
+
+    return row
+
+
+def get_leaderboard(limit: int = 10):
+    """
+    Return the top users ranked by total XP.
+    """
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT
+            u.user_id,
+            u.full_name,
+            u.username,
+            s.level,
+            s.total_xp,
+            s.current_streak
+        FROM users AS u
+        INNER JOIN user_statistics AS s
+            ON u.user_id = s.user_id
+        ORDER BY
+            s.total_xp DESC,
+            s.level DESC,
+            s.current_streak DESC
+        LIMIT ?
+        """,
+        (limit,),
+    )
+
+    rows = cursor.fetchall()
+
+    conn.close()
+
+    return rows
+
+
 def init_db():
     """
     Create all database tables.
