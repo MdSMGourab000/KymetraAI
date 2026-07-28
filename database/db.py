@@ -415,6 +415,98 @@ def get_leaderboard(limit: int = 10):
     return rows
 
 
+def unlock_achievement(user_id: int, achievement: str):
+    conn = get_connection()
+
+    conn.execute(
+        """
+        INSERT OR IGNORE INTO achievements (user_id, achievement)
+        VALUES (?, ?)
+        """,
+        (user_id, achievement),
+    )
+
+    conn.commit()
+    conn.close()
+
+
+def has_achievement(user_id: int, achievement: str):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT 1
+        FROM achievements
+        WHERE user_id = ?
+        AND achievement = ?
+        """,
+        (user_id, achievement),
+    )
+
+    row = cursor.fetchone()
+
+    conn.close()
+
+    return row is not None
+
+
+def get_achievements(user_id: int):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT achievement, unlocked_at
+        FROM achievements
+        WHERE user_id = ?
+        ORDER BY unlocked_at DESC
+        """,
+        (user_id,),
+    )
+
+    rows = cursor.fetchall()
+
+    conn.close()
+
+    return rows
+
+
+def check_achievements(user_id: int):
+    """
+    Check and unlock achievements based on the user's statistics.
+    """
+
+    stats = get_user_statistics(user_id)
+
+    if stats is None:
+        return
+
+    # First Question
+    if stats["questions_asked"] >= 1:
+        unlock_achievement(user_id, "🎉 First Question")
+
+    # First Quiz
+    if stats["quizzes_completed"] >= 1:
+        unlock_achievement(user_id, "🧠 First Quiz")
+
+    # First Flashcard Session
+    if stats["flashcards_completed"] >= 1:
+        unlock_achievement(user_id, "🃏 Flashcard Beginner")
+
+    # Level 5
+    if stats["level"] >= 5:
+        unlock_achievement(user_id, "⭐ Level 5")
+
+    # 7-Day Streak
+    if stats["current_streak"] >= 7:
+        unlock_achievement(user_id, "🔥 7-Day Streak")
+
+    # 100 Questions
+    if stats["questions_asked"] >= 100:
+        unlock_achievement(user_id, "🏆 100 Questions")
+
+
 def init_db():
     """
     Create all database tables.
