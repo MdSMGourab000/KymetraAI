@@ -2,9 +2,19 @@
 from telegram import Update
 from telegram.ext import ContextTypes
 from database.db import (
-    upsert_user, get_user_language, record_activity,
-    save_flashcard_session, get_flashcard_session,
-    flip_flashcard, next_flashcard, delete_flashcard_session,
+    upsert_user,
+    get_user_language,
+    record_activity,
+    save_flashcard_session,
+    get_flashcard_session,
+    flip_flashcard,
+    next_flashcard,
+    delete_flashcard_session,
+    initialize_statistics,
+    record_flashcard_completion,
+    record_study_session,
+    update_streak,
+    add_xp,
 )
 from services.gemini_service import generate_flashcards, detect_subject
 from utils.helpers import build_flashcard_keyboard, MAIN_MENU_KEYBOARD
@@ -13,6 +23,7 @@ from utils.helpers import build_flashcard_keyboard, MAIN_MENU_KEYBOARD
 async def flashcards_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     upsert_user(user.id, user.username, user.first_name)
+    initialize_statistics(user.id)
 
     topic = " ".join(context.args) if context.args else None
     if not topic:
@@ -70,7 +81,15 @@ async def _send_card(message_obj, user_id: int, send_new: bool = False, original
     show_back = session["show_back"]
 
     if idx >= total:
+        record_flashcard_completion(user_id)
+        record_study_session(user_id)
+        update_streak(user_id)
+
+        xp = total * 2
+        add_xp(user_id, xp)
+
         delete_flashcard_session(user_id)
+
         await message_obj.reply_text(
             f"🎉 *You've completed all {total} flashcards!*\n\nGreat study session!",
             parse_mode="Markdown",
