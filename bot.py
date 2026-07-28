@@ -27,6 +27,7 @@ from handlers.flashcards import (
     flashcard_stop_callback,
 )
 from handlers.progress import progress_command, progress_callback
+from handlers.leaderboard import leaderboard_command
 from handlers.language import language_command, language_callback, language_menu_callback
 
 logging.basicConfig(
@@ -55,6 +56,7 @@ def main():
     app.add_handler(CommandHandler("quiz", quiz_command))
     app.add_handler(CommandHandler("flashcards", flashcards_command))
     app.add_handler(CommandHandler("progress", progress_command))
+    app.add_handler(CommandHandler("leaderboard", leaderboard_command))
     app.add_handler(CommandHandler("language", language_command))
     app.add_handler(CommandHandler("stop", stop_command))
 
