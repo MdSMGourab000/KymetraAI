@@ -9,7 +9,9 @@ from database.db import (
     record_question,
     update_streak,
     add_xp,
+    check_achievements,
 )
+
 from services.gemini_service import answer_question, detect_subject
 from utils.helpers import MAIN_MENU_KEYBOARD
 
