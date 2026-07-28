@@ -2,8 +2,18 @@
 from telegram import Update
 from telegram.ext import ContextTypes, CallbackQueryHandler
 from database.db import (
-    upsert_user, get_user_language, record_activity,
-    save_quiz_session, get_quiz_session, advance_quiz, delete_quiz_session,
+    upsert_user,
+    get_user_language,
+    record_activity,
+    save_quiz_session,
+    get_quiz_session,
+    advance_quiz,
+    delete_quiz_session,
+    initialize_statistics,
+    record_quiz_result,
+    record_study_session,
+    update_streak,
+    add_xp,
 )
 from services.gemini_service import generate_quiz, detect_subject
 from utils.helpers import build_quiz_options_keyboard, MAIN_MENU_KEYBOARD
@@ -12,6 +22,7 @@ from utils.helpers import build_quiz_options_keyboard, MAIN_MENU_KEYBOARD
 async def quiz_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     upsert_user(user.id, user.username, user.first_name)
+    initialize_statistics(user.id)
 
     topic = " ".join(context.args) if context.args else None
     if not topic:
@@ -143,6 +154,14 @@ async def quiz_answer_callback(update: Update, context: ContextTypes.DEFAULT_TYP
         topic = session["topic"] if session else "Unknown"
         subject = detect_subject(topic)
         record_activity(user_id, subject, "quiz", {"correct": correct, "total": total})
+
+        record_quiz_result(user_id, correct, total)
+        record_study_session(user_id)
+        update_streak(user_id)
+
+        xp = correct * 10
+        add_xp(user_id, xp)
+
         delete_quiz_session(user_id)
 
         pct = int(correct / total * 100)
