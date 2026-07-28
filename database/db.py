@@ -183,9 +183,13 @@ def record_question(user_id: int):
     conn.close()
 
 
-def record_quiz_result(user_id: int, score: float, correct: bool):
+def record_quiz_result(
+    user_id: int,
+    correct_answers: int,
+    total_questions: int,
+):
     """
-    Record a completed quiz answer and update the average score.
+    Record one completed quiz and update the user's quiz statistics.
     """
 
     conn = get_connection()
@@ -193,8 +197,11 @@ def record_quiz_result(user_id: int, score: float, correct: bool):
 
     cursor.execute(
         """
-        SELECT quizzes_completed,
-               average_quiz_score
+        SELECT
+            quizzes_completed,
+            average_quiz_score,
+            correct_answers,
+            wrong_answers
         FROM user_statistics
         WHERE user_id = ?
         """,
@@ -209,11 +216,17 @@ def record_quiz_result(user_id: int, score: float, correct: bool):
 
     quizzes_completed = row["quizzes_completed"] + 1
 
-    previous_average = row["average_quiz_score"]
+    percentage = (correct_answers / total_questions) * 100
 
     new_average = (
-        (previous_average * row["quizzes_completed"]) + score
+        (
+            row["average_quiz_score"]
+            * row["quizzes_completed"]
+        )
+        + percentage
     ) / quizzes_completed
+
+    wrong_answers = total_questions - correct_answers
 
     cursor.execute(
         """
@@ -229,8 +242,8 @@ def record_quiz_result(user_id: int, score: float, correct: bool):
         (
             quizzes_completed,
             new_average,
-            1 if correct else 0,
-            0 if correct else 1,
+            correct_answers,
+            wrong_answers,
             user_id,
         ),
     )
